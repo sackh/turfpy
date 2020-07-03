@@ -3,7 +3,7 @@ Test module for transformations.
 """
 from geojson import Feature, LineString, Point
 
-from turfpy.transformation import bbox_clip, bezie_spline, circle, intersect
+from turfpy.transformation import bbox_clip, bezie_spline, circle, intersect, tesselate
 
 
 def test_circle():
@@ -113,3 +113,19 @@ def test_bezie_spline():
     bf = bf["geometry"]
     assert bf.type == "LineString"
     assert len(bf.coordinates) == 500
+
+
+def test_tesselate():
+    f = Feature(
+        geometry={
+            "coordinates": [
+                [
+                    [11, 0], [22, 4], [31, 0], [31, 11], [21, 15], [11, 11], [11, 0]
+                ]
+            ],
+            "type": "Polygon",
+        }
+    )
+    result = tesselate(f)
+    print(result)
+    breakpoint()

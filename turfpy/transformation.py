@@ -13,7 +13,7 @@ from turfpy.helper import get_geom
 from turfpy.measurement import bbox_polygon, destination
 
 from .dev_lib.spline import Spline
-from .triangulate import triangulate
+from .dev_lib.earcut import earcut
 
 
 def circle(
@@ -166,56 +166,57 @@ def bezie_spline(line: Feature, resolution=10000, sharpness=0.85):
     return Feature(geometry=LineString(coords))
 
 
-def tesselate(poly: Polygon):
+def tesselate(poly: Feature):
     """
     Add description
 
     :param poly:
     :return:
     """
-    if poly.type != "Polygon" and poly.type != "MultiPolygon":
+    if poly.geometry.type != "Polygon" and poly.geometry.type != "MultiPolygon":
         raise ValueError("Geometry must be Polygon or MultiPolygon")
 
     fc = {"type": "FeatureCollection", "features": []}
 
-    if poly.type == "Polygon":
-        fc["features"] = triangulate(poly.coordinates)
+    if poly.geometry.type == "Polygon":
+        fc["features"] = __process_polygon(poly.geometry.coordinates)
     else:
-        for co in poly.coordinates:
-            fc["features"].extend(triangulate(co))
+        for co in poly.geometry.coordinates:
+            fc["features"].extend(__process_polygon(co))
 
     return fc
 
 
-# def __process_polygon(coordinates):
-#     data = __flatten_coords(coordinates)
-#     dim = 2
-#     result = earclip(data["vertices"], data["holes"], dim)
-#     features = []
-#     vertices = []
-#     for i, val in result:
-#         index = val
-#         vertices.append([data["vertices"][index * dim], data["vertices"][index * dim + 1]])
-#
-#     for i, val in enumerate(vertices[::3]):
-#         coords = vertices[i:i+3]
-#         coords.append(val)
-#         features.append(Polygon([coords]))
-#
-#     return features
-#
-#
-# def __flatten_coords(data):
-#     dim = len(data[0][0])
-#     result = {"vertices": [], "holes": [], "dimensions": dim}
-#     holeIndex = 0
-#
-#     for i, val in enumerate(data):
-#         for j, _ in enumerate(val):
-#             for d in range(dim):
-#                 result["vertices"].append(data[i][j][d])
-#         if i > 0:
-#             holeIndex += len(data[i - 1])
-#             result["holes"].append(holeIndex)
-#
-#     return result
+def __process_polygon(coordinates):
+    data = __flatten_coords(coordinates)
+    dim = 2
+    result = earcut(data["vertices"], data["holes"], dim)
+    breakpoint()
+    features = []
+    vertices = []
+    for i, val in enumerate(result):
+        index = val
+        vertices.append([data["vertices"][index * dim], data["vertices"][index * dim + 1]])
+
+    for i, val in enumerate(vertices[::3]):
+        coords = vertices[i:i+3]
+        coords.append(val)
+        features.append(Feature(geometry={"coordinates": [coords], "type": "Polygon"}))
+
+    return features
+
+
+def __flatten_coords(data):
+    dim = len(data[0][0])
+    result = {"vertices": [], "holes": [], "dimensions": dim}
+    holeIndex = 0
+
+    for i, val in enumerate(data):
+        for j, _ in enumerate(val):
+            for d in range(dim):
+                result["vertices"].append(data[i][j][d])
+        if i > 0:
+            holeIndex += len(data[i - 1])
+            result["holes"].append(holeIndex)
+
+    return result
